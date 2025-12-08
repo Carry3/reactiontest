@@ -8,36 +8,47 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users")
-@Data // Lombok注解，自动生成getter/setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
 
-  @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(unique = true, nullable = false, length = 50) private String username;
+    @Column(unique = true, nullable = false, length = 50)
+    private String username;
 
-  @Column(unique = true, nullable = false, length = 100) private String email;
+    @Column(unique = true, nullable = false, length = 100)
+    private String email;
 
-  @Column(nullable = false, name = "password_hash") private String passwordHash;
+    @Column(nullable = false, name = "password_hash")
+    private String passwordHash;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private UserRole role = UserRole.USER;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role = UserRole.USER;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-  @Column(name = "last_login_at") private LocalDateTime lastLoginAt;
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
-  @Column(name = "is_active") private Boolean isActive = true;
+    @Column(name = "is_active")
+    private Boolean isActive = true;
 
-  // 在保存前自动设置创建时间
-  @PrePersist
-  protected void onCreate() {
-    createdAt = LocalDateTime.now();
-  }
+    // 只需要一个字段记录邮箱是否已验证
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
 
-  // 用户角色枚举
-  public enum UserRole { USER, ADMIN, RESEARCHER }
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+
+    public enum UserRole {
+        USER, ADMIN, RESEARCHER
+    }
 }

@@ -23,68 +23,78 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  private final UserDetailsServiceImpl userDetailsService;
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserDetailsServiceImpl userDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-  /**
-   * 密码编码器
-   */
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-  /**
-   * 认证提供者
-   */
-  @Bean
-  public DaoAuthenticationProvider authenticationProvider() {
-    DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-    authProvider.setUserDetailsService(userDetailsService);
-    authProvider.setPasswordEncoder(passwordEncoder());
-    return authProvider;
-  }
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
 
-  /**
-   * 认证管理器
-   */
-  @Bean
-  public AuthenticationManager
-  authenticationManager(AuthenticationConfiguration authConfig)
-      throws Exception {
-    return authConfig.getAuthenticationManager();
-  }
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
 
-  /**
-   * 安全过滤链配置
-   */
-  @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable())
-        .sessionManagement(
-            session
-            -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth
-                               -> auth
-                                      // 公开端点：注册、登录
-                                      .requestMatchers("/api/auth/**")
-                                      .permitAll()
-                                      // 测试相关接口需要认证
-                                      .requestMatchers("/api/tests/**")
-                                      .authenticated()
-                                      // 分析相关接口需要认证
-                                      .requestMatchers("/api/analytics/**")
-                                      .authenticated()
-                                      // 管理员接口需要ADMIN角色
-                                      .requestMatchers("/api/admin/**")
-                                      .hasRole("ADMIN")
-                                      // 其他所有请求需要认证
-                                      .anyRequest()
-                                      .authenticated())
-        .authenticationProvider(authenticationProvider())
-        .addFilterBefore(jwtAuthenticationFilter,
-                         UsernamePasswordAuthenticationFilter.class);
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // ===== CORS 预检请求（必须放在最前面）=====
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
-    return http.build();
-  }
+                        // ===== 公开端点（无需认证）=====
+
+                        // 认证相关
+                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/verify-email").permitAll()
+                        .requestMatchers("/api/auth/resend-verification").permitAll()
+                        .requestMatchers("/api/auth/forgot-password").permitAll()
+                        .requestMatchers("/api/auth/validate-reset-token").permitAll()
+                        .requestMatchers("/api/auth/reset-password").permitAll()
+
+                        // 统计接口（公开）
+                        .requestMatchers("/api/statistics/global").permitAll()
+                        .requestMatchers("/api/statistics/leaderboard").permitAll()
+                        .requestMatchers("/api/statistics/test-type/**").permitAll()
+                        .requestMatchers("/api/statistics/distribution/**").permitAll()
+                        .requestMatchers("/api/statistics/overview").permitAll()
+
+                        // 分析接口（公开 - 大脑区域信息）
+                        .requestMatchers("/api/analytics/test-types").permitAll()
+                        .requestMatchers("/api/analytics/brain-regions").permitAll()
+                        .requestMatchers("/api/analytics/brain-regions/**").permitAll()
+
+                        // 测试类型（公开 - 获取支持的测试类型）
+                        .requestMatchers("/api/tests/types").permitAll()
+
+                        // ===== 需要认证的端点 =====
+
+                        // 认证相关
+                        .requestMatchers("/api/auth/change-password").authenticated()
+                        .requestMatchers("/api/auth/me").authenticated()
+
+                        // 测试相关
+                        .requestMatchers("/api/tests/**").authenticated()
+
+                        // 管理员接口
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // 其他请求需要认证
+                        .anyRequest().authenticated())
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
 }

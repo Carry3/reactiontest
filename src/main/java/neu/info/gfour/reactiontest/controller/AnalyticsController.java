@@ -1,60 +1,88 @@
 package neu.info.gfour.reactiontest.controller;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import neu.info.gfour.reactiontest.entity.BrainRegionMapping;
 import neu.info.gfour.reactiontest.entity.Test;
-import neu.info.gfour.reactiontest.entity.User;
-import neu.info.gfour.reactiontest.service.AnalyticsService;
-import neu.info.gfour.reactiontest.service.UserService;
+import neu.info.gfour.reactiontest.repository.BrainRegionMappingRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {
 
-  private final AnalyticsService analyticsService;
-  private final UserService userService;
+    private final BrainRegionMappingRepository brainRegionMappingRepository;
 
-  /**
-   * 获取单次测试的详细分析
-   */
-  @GetMapping("/test/{testId}")
-  public ResponseEntity<Map<String, Object>>
-  getTestAnalysis(@PathVariable Long testId, Authentication authentication) {
+    /**
+     * 获取所有测试类型及其对应的大脑区域
+     */
+    @GetMapping("/test-types")
+    public ResponseEntity<List<Map<String, Object>>> getAllTestTypesWithBrainRegions() {
+        List<Map<String, Object>> result = new ArrayList<>();
 
-    // TODO: 验证用户权限
-    Map<String, Object> analysis = analyticsService.getTestAnalysis(testId);
-    return ResponseEntity.ok(analysis);
-  }
+        for (Test.TestType type : Test.TestType.values()) {
+            Map<String, Object> typeInfo = new HashMap<>();
+            typeInfo.put("type", type.name());
+            typeInfo.put("name", type.getDisplayName());
+            
+            // 获取对应的大脑区域
+            List<BrainRegionMapping> regions = brainRegionMappingRepository.findByTestType(type);
+            List<Map<String, String>> brainRegions = regions.stream()
+                    .map(r -> Map.of(
+                            "region", r.getBrainRegion().name(),
+                            "regionName", r.getBrainRegion().getChineseName(),
+                            "abbreviation", r.getBrainRegion().getAbbreviation(),
+                            "description", r.getDescription() != null ? r.getDescription() : ""
+                    ))
+                    .collect(Collectors.toList());
+            
+            typeInfo.put("brainRegions", brainRegions);
+            result.add(typeInfo);
+        }
 
-  /**
-   * 获取测试类型信息（包含激活的大脑区域）
-   */
-  @GetMapping("/test-type/{testType}")
-  public ResponseEntity<Map<String, Object>>
-  getTestTypeInfo(@PathVariable Test.TestType testType) {
-
-    Map<String, Object> info = analyticsService.getTestTypeInfo(testType);
-    return ResponseEntity.ok(info);
-  }
-
-  /**
-   * 获取所有测试类型及其对应的大脑区域
-   */
-  @GetMapping("/test-types")
-  public ResponseEntity<List<Map<String, Object>>> getAllTestTypes() {
-    List<Map<String, Object>> testTypes = new ArrayList<>();
-
-    for (Test.TestType type : Test.TestType.values()) {
-      testTypes.add(analyticsService.getTestTypeInfo(type));
+        return ResponseEntity.ok(result);
     }
 
-    return ResponseEntity.ok(testTypes);
-  }
+    /**
+     * 获取特定测试类型的大脑区域信息
+     */
+    @GetMapping("/brain-regions/{testType}")
+    public ResponseEntity<?> getBrainRegionsForTestType(@PathVariable Test.TestType testType) {
+        List<BrainRegionMapping> regions = brainRegionMappingRepository.findByTestType(testType);
+        
+        List<Map<String, String>> result = regions.stream()
+                .map(r -> Map.of(
+                        "region", r.getBrainRegion().name(),
+                        "regionName", r.getBrainRegion().getChineseName(),
+                        "abbreviation", r.getBrainRegion().getAbbreviation(),
+                        "description", r.getDescription() != null ? r.getDescription() : ""
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of(
+                "testType", testType.name(),
+                "testName", testType.getDisplayName(),
+                "brainRegions", result
+        ));
+    }
+
+    /**
+     * 获取所有大脑区域列表
+     */
+    @GetMapping("/brain-regions")
+    public ResponseEntity<List<Map<String, String>>> getAllBrainRegions() {
+        List<Map<String, String>> regions = Arrays.stream(BrainRegionMapping.BrainRegion.values())
+                .map(r -> Map.of(
+                        "region", r.name(),
+                        "regionName", r.getChineseName(),
+                        "abbreviation", r.getAbbreviation()
+                ))
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(regions);
+    }
 }
