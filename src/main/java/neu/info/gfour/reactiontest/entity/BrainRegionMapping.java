@@ -29,17 +29,17 @@ public class BrainRegionMapping {
     
     // 大脑区域枚举
     public enum BrainRegion {
-        PRIMARY_MOTOR_CORTEX("初级运动皮层", "M1"),
-        PREFRONTAL_CORTEX("前额叶皮层", "PFC"),
-        DORSOLATERAL_PFC("背外侧前额叶皮层", "DLPFC"),
-        ANTERIOR_CINGULATE("前扣带回皮层", "ACC"),
-        PARIETAL_CORTEX("顶叶皮层", "PC"),
-        HIPPOCAMPUS("海马体", "HPC"),
-        BASAL_GANGLIA("基底神经节", "BG"),
-        THALAMUS("丘脑", "THL"),
-        BRAINSTEM("脑干", "BS"),
-        PREMOTOR_CORTEX("运动前区", "PMC"),
-        LOCUS_COERULEUS("蓝斑", "LC");
+        PRIMARY_MOTOR_CORTEX("Primary Motor Cortex", "M1"),
+        PREFRONTAL_CORTEX("Prefrontal Cortex", "PFC"),
+        DORSOLATERAL_PFC("Dorsolateral Prefrontal Cortex", "DLPFC"),
+        ANTERIOR_CINGULATE("Anterior Cingulate", "ACC"),
+        PARIETAL_CORTEX("Parietal Cortex", "PC"),
+        HIPPOCAMPUS("Hippocampus", "HPC"),
+        BASAL_GANGLIA("Basal Ganglia", "BG"),
+        THALAMUS("Thalamus", "THL"),
+        BRAINSTEM("Brainstem", "BS"),
+        PREMOTOR_CORTEX("Premotor Cortex", "PMC"),
+        LOCUS_COERULEUS("Locus Coeruleus", "LC");
         
         private final String chineseName;
         private final String abbreviation;

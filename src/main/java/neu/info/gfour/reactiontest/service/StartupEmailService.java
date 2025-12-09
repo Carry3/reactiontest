@@ -17,7 +17,7 @@ public class StartupEmailService {
 
     private final EmailService emailService;
 
-    @Value("${app.name:认知反应测试系统}")
+    @Value("${app.name:Cognitive Reaction Test System}")
     private String appName;
 
     @Value("${app.startup-notification.enabled:true}")
@@ -27,27 +27,27 @@ public class StartupEmailService {
     private String recipientEmail;
 
     /**
-     * 应用启动完成时发送邮件通知
+     * Send email notification when application startup completes
      */
     @EventListener(ApplicationReadyEvent.class)
     public void sendStartupNotification() {
         if (!startupNotificationEnabled) {
-            log.info("启动邮件通知已禁用");
+            log.info("Startup email notification disabled");
             return;
         }
 
         try {
-            log.info("准备发送启动通知邮件到: {}", recipientEmail);
+            log.info("Preparing to send startup notification email to: {}", recipientEmail);
 
-            String subject = "🚀 系统上线啦！";
+            String subject = "🚀 System is Online!";
             String content = buildStartupEmailContent();
 
             emailService.sendStartupNotification(recipientEmail, subject, content);
 
-            log.info("启动通知邮件已发送到: {}", recipientEmail);
+            log.info("Startup notification email sent to: {}", recipientEmail);
         } catch (Exception e) {
-            log.error("发送启动通知邮件失败: {}", e.getMessage(), e);
-            // 不抛出异常，避免影响应用启动
+            log.error("Failed to send startup notification email: {}", e.getMessage(), e);
+            // Do not throw exception to avoid affecting application startup
         }
     }
 
@@ -61,26 +61,26 @@ public class StartupEmailService {
                     <!-- Header -->
                     <div style="background: #58CC02; padding: 40px 30px; text-align: center; border-radius: 16px 16px 0 0;">
                         <div style="font-size: 64px; margin-bottom: 10px;">🚀</div>
-                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">系统上线啦！</h1>
+                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">System is Online!</h1>
                     </div>
 
                     <!-- Content -->
                     <div style="padding: 40px 30px; background: #ffffff;">
-                        <h2 style="color: #3C3C3C; font-size: 24px; font-weight: 700; margin: 0 0 20px 0;">太棒了！👏</h2>
+                        <h2 style="color: #3C3C3C; font-size: 24px; font-weight: 700; margin: 0 0 20px 0;">Awesome! 👏</h2>
                         <p style="color: #777777; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
-                            <strong>%s</strong> 已经成功启动并开始运行了！一切准备就绪，让我们开始吧！
+                            <strong>%s</strong> has successfully started and is now running! Everything is ready, let's get started!
                         </p>
 
                         <!-- Info Box -->
                         <div style="background: #E8F9E8; border: 2px solid #58CC02; padding: 25px; border-radius: 12px; margin: 30px 0;">
                             <p style="margin: 8px 0; color: #3C3C3C; font-size: 15px; line-height: 1.8;">
-                                <strong>📅 启动时间：</strong> %s
+                                <strong>📅 Startup Time:</strong> %s
                             </p>
                             <p style="margin: 8px 0; color: #3C3C3C; font-size: 15px; line-height: 1.8;">
-                                <strong>🌐 应用名称：</strong> %s
+                                <strong>🌐 Application Name:</strong> %s
                             </p>
                             <p style="margin: 8px 0; color: #3C3C3C; font-size: 15px; line-height: 1.8;">
-                                <strong>✅ 运行状态：</strong> <span style="color: #58CC02; font-weight: 700;">正常运行中</span>
+                                <strong>✅ Running Status:</strong> <span style="color: #58CC02; font-weight: 700;">Running Normally</span>
                             </p>
                         </div>
 
@@ -88,13 +88,13 @@ public class StartupEmailService {
                         <div style="text-align: center; margin: 30px 0;">
                             <div style="font-size: 48px; margin-bottom: 15px;">🎉</div>
                             <p style="color: #58CC02; font-size: 18px; font-weight: 700; margin: 0;">
-                                继续保持！系统运行状态良好
+                                Keep it up! System is running smoothly
                             </p>
                         </div>
 
                         <p style="color: #AFAFAF; font-size: 13px; margin: 30px 0 0 0; text-align: center; line-height: 1.6;">
-                            这是一封系统自动发送的启动通知邮件 📧<br>
-                            如有任何问题，请联系系统管理员
+                            This is an automatically sent startup notification email 📧<br>
+                            If you have any questions, please contact the system administrator
                         </p>
                     </div>
 

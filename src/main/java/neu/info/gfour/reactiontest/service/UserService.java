@@ -20,15 +20,15 @@ public class UserService {
     private final JwtUtil jwtUtil;
 
     /**
-     * 用户注册
+     * User registration
      */
     @Transactional
     public User registerUser(String username, String email, String password) {
         if (userRepository.existsByUsername(username)) {
-            throw new RuntimeException("用户名已存在");
+            throw new RuntimeException("Username already exists");
         }
         if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("邮箱已被注册");
+            throw new RuntimeException("Email already registered");
         }
 
         User user = new User();
@@ -41,7 +41,7 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // 生成JWT验证Token并发送邮件
+        // Generate JWT verification token and send email
         String token = jwtUtil.generateEmailVerifyToken(savedUser.getId(), email);
         emailService.sendVerificationEmail(email, username, token);
 
@@ -49,28 +49,28 @@ public class UserService {
     }
 
     /**
-     * 验证邮箱 - 从JWT中解析用户信息
+     * Verify email - parse user information from JWT
      */
     @Transactional
     public void verifyEmail(String token) {
-        // 验证Token类型和有效性
+        // Verify token type and validity
         if (!jwtUtil.validateToken(token, JwtUtil.TYPE_EMAIL_VERIFY)) {
-            throw new RuntimeException("无效或已过期的验证链接");
+            throw new RuntimeException("Invalid or expired verification link");
         }
 
         Long userId = Long.parseLong(jwtUtil.getSubjectFromToken(token));
         String email = jwtUtil.getEmailFromToken(token);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
 
-        // 确保邮箱匹配（防止token被滥用）
+        // Ensure email matches (prevent token abuse)
         if (!user.getEmail().equals(email)) {
-            throw new RuntimeException("验证链接无效");
+            throw new RuntimeException("Verification link is invalid");
         }
 
         if (user.getEmailVerified()) {
-            throw new RuntimeException("邮箱已验证，无需重复操作");
+            throw new RuntimeException("Email already verified, no need to repeat");
         }
 
         user.setEmailVerified(true);
@@ -78,14 +78,14 @@ public class UserService {
     }
 
     /**
-     * 重新发送验证邮件
+     * Resend verification email
      */
     public void resendVerificationEmail(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
 
         if (user.getEmailVerified()) {
-            throw new RuntimeException("邮箱已验证，无需重复操作");
+            throw new RuntimeException("Email already verified, no need to repeat");
         }
 
         String token = jwtUtil.generateEmailVerifyToken(user.getId(), email);
@@ -93,34 +93,34 @@ public class UserService {
     }
 
     /**
-     * 请求密码重置
+     * Request password reset
      */
     public void requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("该邮箱未注册"));
+                .orElseThrow(() -> new RuntimeException("This email is not registered"));
 
         String token = jwtUtil.generatePasswordResetToken(user.getId(), email);
         emailService.sendPasswordResetEmail(email, user.getUsername(), token);
     }
 
     /**
-     * 重置密码 - 从JWT中解析用户信息
+     * Reset password - parse user information from JWT
      */
     @Transactional
     public void resetPassword(String token, String newPassword) {
         if (!jwtUtil.validateToken(token, JwtUtil.TYPE_PASSWORD_RESET)) {
-            throw new RuntimeException("无效或已过期的重置链接");
+            throw new RuntimeException("Invalid or expired reset link");
         }
 
         Long userId = Long.parseLong(jwtUtil.getSubjectFromToken(token));
         String email = jwtUtil.getEmailFromToken(token);
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
 
-        // 确保邮箱匹配
+        // Ensure email matches
         if (!user.getEmail().equals(email)) {
-            throw new RuntimeException("重置链接无效");
+            throw new RuntimeException("Reset link is invalid");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -130,25 +130,25 @@ public class UserService {
     }
 
     /**
-     * 验证重置Token是否有效
+     * Verify if reset token is valid
      */
     public boolean isResetTokenValid(String token) {
         return jwtUtil.validateToken(token, JwtUtil.TYPE_PASSWORD_RESET);
     }
 
     /**
-     * 修改密码（已登录用户）
+     * Change password (logged in user)
      */
     @Transactional
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         User user = findById(userId);
 
         if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-            throw new RuntimeException("原密码错误");
+            throw new RuntimeException("Incorrect old password");
         }
 
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-            throw new RuntimeException("新密码不能与原密码相同");
+            throw new RuntimeException("New password cannot be the same as old password");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -159,17 +159,17 @@ public class UserService {
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
     }
 
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
     }
 
     public User findById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new RuntimeException("User does not exist"));
     }
 
     @Transactional

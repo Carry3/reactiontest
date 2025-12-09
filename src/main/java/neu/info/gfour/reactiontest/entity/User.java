@@ -39,7 +39,7 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
-    // 只需要一个字段记录邮箱是否已验证
+    // Only need one field to record if email is verified
     @Column(name = "email_verified")
     private Boolean emailVerified = false;
 

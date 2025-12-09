@@ -23,7 +23,7 @@ public class TestService {
     private final BrainRegionMappingRepository brainRegionMappingRepository;
 
     /**
-     * 开始测试 - 创建测试记录
+     * Start test - create test record
      */
     @Transactional
     public Test startTest(User user, Test.TestType testType) {
@@ -35,31 +35,31 @@ public class TestService {
     }
 
     /**
-     * 完成测试 - 保存所有数据并计算统计
+     * Complete test - save all data and calculate statistics
      */
     @Transactional
     public TestResultResponse completeTest(Long testId, User user, CompleteTestRequest request) {
         Test test = testRepository.findById(testId)
-                .orElseThrow(() -> new RuntimeException("测试不存在"));
+                .orElseThrow(() -> new RuntimeException("Test does not exist"));
 
-        // 验证权限
+        // Verify permission
         if (!test.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("无权操作此测试");
+            throw new RuntimeException("No permission to operate this test");
         }
 
-        // 验证状态
+        // Verify status
         if (test.getStatus() == Test.TestStatus.COMPLETED) {
-            throw new RuntimeException("测试已完成，不能重复提交");
+            throw new RuntimeException("Test already completed, cannot resubmit");
         }
 
-        // 更新测试基本信息
+        // Update test basic information
         test.setEndTime(LocalDateTime.now());
         test.setStatus(Test.TestStatus.COMPLETED);
         test.setTotalTrials(request.getTotalTrials());
         test.setCorrectTrials(request.getCorrectTrials());
         test.setTotalTimeMs(request.getTotalTimeMs());
 
-        // 保存每轮结果
+        // Save each round result
         List<TestResult> results = new ArrayList<>();
         for (CompleteTestRequest.RoundResult round : request.getRounds()) {
             TestResult result = new TestResult();
@@ -73,26 +73,29 @@ public class TestService {
         }
         testResultRepository.saveAll(results);
 
-        // 计算并保存统计数据
+        // Calculate and save statistics
         TestStatistics statistics = calculateStatistics(test, request);
         testStatisticsRepository.save(statistics);
 
+        // Recalculate percentile ranks for all tests of the same type
+        recalculatePercentileRanksForType(test.getTestType());
+
         testRepository.save(test);
 
-        // 构建响应
+        // Build response
         return buildTestResultResponse(test, statistics, results, true);
     }
 
     /**
-     * 获取测试结果详情
+     * Get test result details
      */
     public TestResultResponse getTestResult(Long testId, User user) {
         Test test = testRepository.findById(testId)
-                .orElseThrow(() -> new RuntimeException("测试不存在"));
+                .orElseThrow(() -> new RuntimeException("Test does not exist"));
 
-        // 验证权限
+        // Verify permission
         if (!test.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("无权查看此测试");
+            throw new RuntimeException("No permission to view this test");
         }
 
         TestStatistics statistics = testStatisticsRepository.findByTest(test)
@@ -104,7 +107,7 @@ public class TestService {
     }
 
     /**
-     * 获取用户测试历史列表
+     * Get user test history list
      */
     public List<TestHistoryResponse> getTestHistory(User user) {
         List<Test> tests = testRepository.findByUserOrderByStartTimeDesc(user);
@@ -115,7 +118,7 @@ public class TestService {
     }
 
     /**
-     * 获取用户特定类型的测试历史
+     * Get user test history by specific type
      */
     public List<TestHistoryResponse> getTestHistoryByType(User user, Test.TestType testType) {
         List<Test> tests = testRepository.findByUserAndTestTypeOrderByStartTimeDesc(user, testType);
@@ -126,19 +129,19 @@ public class TestService {
     }
 
     /**
-     * 取消测试
+     * Cancel test
      */
     @Transactional
     public void cancelTest(Long testId, User user) {
         Test test = testRepository.findById(testId)
-                .orElseThrow(() -> new RuntimeException("测试不存在"));
+                .orElseThrow(() -> new RuntimeException("Test does not exist"));
 
         if (!test.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("无权操作此测试");
+            throw new RuntimeException("No permission to operate this test");
         }
 
         if (test.getStatus() == Test.TestStatus.COMPLETED) {
-            throw new RuntimeException("已完成的测试不能取消");
+            throw new RuntimeException("Completed tests cannot be cancelled");
         }
 
         test.setStatus(Test.TestStatus.CANCELLED);
@@ -146,10 +149,10 @@ public class TestService {
         testRepository.save(test);
     }
 
-    // ==================== 私有方法 ====================
+    // ==================== Private Methods ====================
 
     /**
-     * 计算统计数据
+     * Calculate statistics
      */
     private TestStatistics calculateStatistics(Test test, CompleteTestRequest request) {
         List<Integer> reactionTimes = request.getRounds().stream()
@@ -164,39 +167,39 @@ public class TestService {
         stats.setTotalTrials(request.getTotalTrials());
         stats.setCorrectTrials(request.getCorrectTrials());
 
-        // 准确率
+        // Accuracy rate
         double accuracy = request.getTotalTrials() > 0
                 ? (double) request.getCorrectTrials() / request.getTotalTrials()
                 : 0.0;
         stats.setAccuracyRate(accuracy);
 
         if (!reactionTimes.isEmpty()) {
-            // 平均反应时间
+            // Average reaction time
             double avg = reactionTimes.stream()
                     .mapToInt(Integer::intValue)
                     .average()
                     .orElse(0.0);
             stats.setAvgReactionTime(avg);
 
-            // 标准差
+            // Standard deviation
             double variance = reactionTimes.stream()
                     .mapToDouble(rt -> Math.pow(rt - avg, 2))
                     .average()
                     .orElse(0.0);
             stats.setStdDeviation(Math.sqrt(variance));
 
-            // 中位数
+            // Median
             int size = reactionTimes.size();
             double median = size % 2 == 0
                     ? (reactionTimes.get(size / 2 - 1) + reactionTimes.get(size / 2)) / 2.0
                     : reactionTimes.get(size / 2);
             stats.setMedianReactionTime(median);
 
-            // 最快和最慢
+            // Fastest and slowest
             stats.setFastestReactionTime(reactionTimes.get(0));
             stats.setSlowestReactionTime(reactionTimes.get(reactionTimes.size() - 1));
 
-            // 百分位排名
+            // Percentile rank
             double percentile = calculatePercentileRank(test.getTestType(), avg);
             stats.setPercentileRank(percentile);
         }
@@ -205,7 +208,7 @@ public class TestService {
     }
 
     /**
-     * 计算百分位排名
+     * Calculate percentile rank
      */
     private double calculatePercentileRank(Test.TestType testType, Double avgReactionTime) {
         long totalTests = testStatisticsRepository.countTotalTests(testType);
@@ -217,13 +220,39 @@ public class TestService {
     }
 
     /**
-     * 构建测试结果响应
+     * Recalculate percentile ranks for all tests of a certain test type
+     * Called when a new test is completed to ensure all ranks of the same type are
+     * up to date
+     */
+    @Transactional
+    private void recalculatePercentileRanksForType(Test.TestType testType) {
+        // Get all test statistics for this type
+        List<TestStatistics> allStats = testStatisticsRepository.findAllByTestType(testType);
+
+        if (allStats.isEmpty()) {
+            return;
+        }
+
+        // Recalculate percentile rank for each test
+        for (TestStatistics stats : allStats) {
+            if (stats.getAvgReactionTime() != null) {
+                double newPercentile = calculatePercentileRank(testType, stats.getAvgReactionTime());
+                stats.setPercentileRank(newPercentile);
+            }
+        }
+
+        // Batch save updates
+        testStatisticsRepository.saveAll(allStats);
+    }
+
+    /**
+     * Build test result response
      */
     private TestResultResponse buildTestResultResponse(Test test, TestStatistics stats,
             List<TestResult> results, boolean includeRounds) {
         TestResultResponse response = new TestResultResponse();
 
-        // 基本信息
+        // Basic information
         response.setTestId(test.getId());
         response.setTestType(test.getTestType().name());
         response.setTestName(test.getTestType().getDisplayName());
@@ -232,7 +261,7 @@ public class TestService {
         response.setEndTime(test.getEndTime());
         response.setTotalTimeMs(test.getTotalTimeMs());
 
-        // 统计数据
+        // Statistics
         if (stats != null) {
             TestResultResponse.Statistics statistics = new TestResultResponse.Statistics();
             statistics.setTotalTrials(stats.getTotalTrials());
@@ -245,14 +274,14 @@ public class TestService {
             statistics.setSlowestTime(stats.getSlowestReactionTime());
             response.setStatistics(statistics);
 
-            // 排名信息
+            // Rank information
             TestResultResponse.RankInfo rankInfo = new TestResultResponse.RankInfo();
             rankInfo.setPercentile(stats.getPercentileRank());
             rankInfo.setDescription(getRankDescription(stats.getPercentileRank()));
             response.setRank(rankInfo);
         }
 
-        // 大脑区域
+        // Brain regions
         List<BrainRegionMapping> brainRegions = brainRegionMappingRepository.findByTestType(test.getTestType());
         List<TestResultResponse.BrainRegionInfo> brainRegionInfos = brainRegions.stream()
                 .map(br -> {
@@ -266,7 +295,7 @@ public class TestService {
                 .collect(Collectors.toList());
         response.setBrainRegions(brainRegionInfos);
 
-        // 每轮详情
+        // Round details
         if (includeRounds && results != null) {
             List<TestResultResponse.RoundDetail> roundDetails = results.stream()
                     .map(r -> {
@@ -286,7 +315,7 @@ public class TestService {
     }
 
     /**
-     * 构建历史记录响应
+     * Build history record response
      */
     private TestHistoryResponse buildTestHistoryResponse(Test test) {
         TestHistoryResponse response = new TestHistoryResponse();
@@ -300,7 +329,7 @@ public class TestService {
         response.setTotalTrials(test.getTotalTrials());
         response.setCorrectTrials(test.getCorrectTrials());
 
-        // 获取统计数据
+        // Get statistics
         testStatisticsRepository.findByTest(test).ifPresent(stats -> {
             response.setAccuracyRate(stats.getAccuracyRate());
             response.setAvgReactionTime(stats.getAvgReactionTime());
@@ -312,15 +341,15 @@ public class TestService {
 
     private String getRankDescription(Double percentile) {
         if (percentile == null)
-            return "暂无排名";
+            return "No rank yet";
         if (percentile >= 90)
-            return "优秀！超过了 " + String.format("%.1f", percentile) + "% 的用户";
+            return "Excellent! Better than " + String.format("%.1f", percentile) + "% of users";
         if (percentile >= 70)
-            return "良好！超过了 " + String.format("%.1f", percentile) + "% 的用户";
+            return "Good! Better than " + String.format("%.1f", percentile) + "% of users";
         if (percentile >= 50)
-            return "中等水平，超过了 " + String.format("%.1f", percentile) + "% 的用户";
+            return "Average, better than " + String.format("%.1f", percentile) + "% of users";
         if (percentile >= 30)
-            return "还有提升空间，超过了 " + String.format("%.1f", percentile) + "% 的用户";
-        return "需要多加练习，超过了 " + String.format("%.1f", percentile) + "% 的用户";
+            return "Room for improvement, better than " + String.format("%.1f", percentile) + "% of users";
+        return "Needs more practice, better than " + String.format("%.1f", percentile) + "% of users";
     }
 }

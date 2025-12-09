@@ -61,7 +61,7 @@ public class Test {
         }
     }
 
-    // ===== 测试类型枚举（4种）=====
+    // ===== Test Type Enum (5 types) =====
     public enum TestType {
         SIMPLE_REACTION("Simple Reaction"),
         CHOICE_REACTION("Choice Reaction"),
@@ -80,7 +80,7 @@ public class Test {
         }
     }
 
-    // ===== 测试状态枚举 =====
+    // ===== Test Status Enum =====
     public enum TestStatus {
         IN_PROGRESS,
         COMPLETED,
